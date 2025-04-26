@@ -56,12 +56,12 @@
 
             <!-- Agents Section -->
             <div class="flex gap-4 mb-6">
-                <div class="flex-1">
+                <!-- <div class="flex-1">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Assign to Agent</label>
                     <select id="agentSelect" class="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200">
                         <option value="">Select an agent</option>
                     </select>
-                </div>
+                </div> -->
                 <div class="flex-1">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Number of Leads</label>
                     <input id="numberOfLeadsInput" type="number" min="0" class="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200">

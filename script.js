@@ -4,10 +4,25 @@ const entityTypeId = 1110;
 const API_BASE_URL =
   "https://x10realestate.bitrix24.com/rest/4/fvdxksv787blpg1y";
 const endpoints = {
-  projects: `${API_BASE_URL}/crm.item.list?entityTypeId=${entityTypeId}&select[0]=ID&select[1]=ufCrm40Project`,
-  agents: `${API_BASE_URL}/user.get?filter[ACTIVE]=Y&filter[!=ID]=1`,
-  leads: `${API_BASE_URL}/crm.item.list?entityTypeId=${entityTypeId}&select[0]=ID&select[1]=assignedById&select[2]=ufCrm40Project`,
+  projects:
+    `${API_BASE_URL}/crm.item.list?entityTypeId=${entityTypeId}` +
+    `&select[0]=ID&select[1]=ufCrm40Project`,
+  leads:
+    `${API_BASE_URL}/crm.item.list?entityTypeId=${entityTypeId}` +
+    `&select[0]=ID` +
+    `&select[1]=assignedById` +
+    `&select[2]=ufCrm40Project` +
+    `&select[3]=ufCrm40Community`,
   updateLead: `${API_BASE_URL}/crm.item.update?entityTypeId=${entityTypeId}`,
+};
+const communityAgentMap = {
+  "Al Furjan": 32,
+  "Creek Harbour": 32,
+  "Palm Jumeirah": 34,
+  "Jumeirah Village Circle": 34,
+  Arjan: 22,
+  "Dubai Hills": 16,
+  "Damac Lagoons": 16,
 };
 
 // DOM Elements
@@ -18,7 +33,7 @@ const elements = {
   modalContent: document.getElementById("modalContent"),
   loadingOverlay: document.getElementById("loadingOverlay"),
   projectSelect: document.getElementById("projectSelect"),
-  agentSelect: document.getElementById("agentSelect"),
+  // agentSelect: document.getElementById("agentSelect"),
   numberOfLeadsInput: document.getElementById("numberOfLeadsInput"),
   submitBtn: document.getElementById("submitBtn"),
   totalLeads: document.getElementById("totalLeads"),
@@ -140,16 +155,6 @@ const fetchInitialData = async () => {
       (p) => p.ufCrm40Project,
       "No projects found"
     );
-
-    // Fetch and populate agents
-    const agents = await fetchAllPages(endpoints.agents, "result");
-    populateSelect(
-      elements.agentSelect,
-      agents,
-      "ID",
-      (a) => `${a.NAME} ${a.LAST_NAME || ""}`.trim(),
-      "No active agents found"
-    );
   } catch (error) {
     handleError("Failed to load data from Bitrix24. Please try again.", error);
   } finally {
@@ -167,9 +172,9 @@ const fetchLeadsForProject = async (projectId) => {
 
     const stats = {
       total: leads.length,
-      assigned: leads.filter((l) => l.assignedById && l.assignedById != "1")
+      assigned: leads.filter((l) => l.assignedById && l.assignedById != "4")
         .length,
-      unassigned: leads.filter((l) => l.assignedById == "1").length,
+      unassigned: leads.filter((l) => l.assignedById == "4").length,
     };
 
     animateInputs([
@@ -193,50 +198,53 @@ const fetchLeadsForProject = async (projectId) => {
   }
 };
 
-const assignLeads = async (agentId, numberOfLeads, projectId) => {
+async function assignLeads(numberOfLeads, projectId) {
   const leads = await fetchLeadsForProject(projectId);
-  const unassignedLeads = leads.filter((l) => l.assignedById == "1");
+  const unassigned = leads.filter((l) => l.assignedById == "4");
 
-  if (unassignedLeads.length < numberOfLeads) {
-    showToast(
-      `Not enough unassigned leads. Available: ${unassignedLeads.length}, Requested: ${numberOfLeads}`,
+  if (unassigned.length < numberOfLeads) {
+    return showToast(
+      `Not enough unassigned leads. Available: ${unassigned.length}, Requested: ${numberOfLeads}`,
       "error"
     );
-    return;
   }
 
-  const leadsToAssign = unassignedLeads.slice(0, numberOfLeads);
-  toggleLoading(true);
+  // take the first N, but look up each lead’s agent by its community
+  const leadsToAssign = unassigned.slice(0, numberOfLeads).map((lead) => {
+    const agentId = communityAgentMap[lead.ufCrm40Community];
+    return { id: lead.id, agentId };
+  });
 
+  toggleLoading(true);
   elements.submitBtn.disabled = true;
-  elements.submitBtn.classList.add("opacity-50");
   elements.submitBtn.textContent = "Assigning...";
 
   try {
     await Promise.all(
-      leadsToAssign.map(async (lead) => {
-        const response = await fetch(`${endpoints.updateLead}&id=${lead.id}`, {
+      leadsToAssign.map(({ id, agentId }) =>
+        fetch(`${endpoints.updateLead}&id=${id}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ fields: { assignedById: agentId } }),
-        });
-        const json = await response.json();
-        if (json.error)
-          throw new Error(`Failed to update lead ${lead.id}: ${json.error}`);
-      })
+        })
+          .then((r) => r.json())
+          .then((json) => {
+            if (json.error) throw new Error(json.error);
+          })
+      )
     );
 
+    // refresh stats
     await fetchLeadsForProject(projectId);
     showToast("Leads assigned successfully!", "success");
   } catch (error) {
     handleError("Failed to assign leads. Please try again.", error);
   } finally {
-    setTimeout(() => toggleLoading(false), 300);
+    toggleLoading(false);
     elements.submitBtn.disabled = false;
-    elements.submitBtn.classList.remove("opacity-50");
     elements.submitBtn.textContent = "Submit";
   }
-};
+}
 
 // Event Listeners
 elements.uploadBtn.addEventListener("click", () => toggleModal(true));
@@ -259,21 +267,17 @@ elements.projectSelect.addEventListener("change", (e) => {
 });
 
 elements.submitBtn.addEventListener("click", () => {
-  const agentId = elements.agentSelect.value;
-  const numberOfLeads = parseInt(elements.numberOfLeadsInput.value, 10);
   const projectId = elements.projectSelect.value;
+  const numberOfLeads = parseInt(elements.numberOfLeadsInput.value, 10);
 
   if (!projectId) {
     return showToast("Please select a project first.", "error");
-  }
-  if (!agentId) {
-    return showToast("Please select an agent.", "error");
   }
   if (!numberOfLeads || numberOfLeads <= 0) {
     return showToast("Please enter a valid number of leads.", "error");
   }
 
-  assignLeads(agentId, numberOfLeads, projectId);
+  assignLeads(numberOfLeads, projectId);
 });
 
 elements.uploadForm.addEventListener("submit", function (e) {
