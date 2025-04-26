@@ -20,7 +20,7 @@ const communityAgentMap = {
   "Creek Harbour": 32,
   "Palm Jumeirah": 34,
   "Jumeirah Village Circle": 34,
-  Arjan: 22,
+  "Arjan": 22,
   "Dubai Hills": 16,
   "Damac Lagoons": 16,
 };
