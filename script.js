@@ -1,11 +1,12 @@
-const entityTypeId = 1040;
+const entityTypeId = 1110;
 
 // API Endpoints
-const API_BASE_URL = "https://mondus.group/rest/1/dw9gd4xauhctd7ha";
+const API_BASE_URL =
+  "https://x10realestate.bitrix24.com/rest/4/fvdxksv787blpg1y";
 const endpoints = {
-  projects: `${API_BASE_URL}/crm.item.list?entityTypeId=${entityTypeId}&select[0]=ID&select[1]=ufCrm4ProjectOrBuilding`,
+  projects: `${API_BASE_URL}/crm.item.list?entityTypeId=${entityTypeId}&select[0]=ID&select[1]=ufCrm40Project`,
   agents: `${API_BASE_URL}/user.get?filter[ACTIVE]=Y&filter[!=ID]=1`,
-  leads: `${API_BASE_URL}/crm.item.list?entityTypeId=${entityTypeId}&select[0]=ID&select[1]=assignedById&select[2]=ufCrm4ProjectOrBuilding`,
+  leads: `${API_BASE_URL}/crm.item.list?entityTypeId=${entityTypeId}&select[0]=ID&select[1]=assignedById&select[2]=ufCrm40Project`,
   updateLead: `${API_BASE_URL}/crm.item.update?entityTypeId=${entityTypeId}`,
 };
 
@@ -128,15 +129,15 @@ const fetchInitialData = async () => {
     populateSelect(
       elements.projectSelect,
       projects.filter((p) => {
-        const name = p.ufCrm4ProjectOrBuilding;
+        const name = p.ufCrm40Project;
         if (name && !projectNames.has(name)) {
           projectNames.add(name);
           return true;
         }
         return false;
       }),
-      "ufCrm4ProjectOrBuilding",
-      (p) => p.ufCrm4ProjectOrBuilding,
+      "ufCrm40Project",
+      (p) => p.ufCrm40Project,
       "No projects found"
     );
 
@@ -161,7 +162,7 @@ const fetchLeadsForProject = async (projectId) => {
   try {
     const leadUrl = `${
       endpoints.leads
-    }&filter[ufCrm4ProjectOrBuilding]=${encodeURIComponent(projectId)}`;
+    }&filter[ufCrm40Project]=${encodeURIComponent(projectId)}`;
     const leads = await fetchAllPages(leadUrl, "items");
 
     const stats = {
